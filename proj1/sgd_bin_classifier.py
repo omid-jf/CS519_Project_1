@@ -12,11 +12,14 @@ import numpy as np
 import sys
 import matplotlib.pyplot as plt
 
+np.seterr(all='raise')
+
 
 # Implementation of SGD binary classifier
 class SGD(object):
     # Constructor
     def __init__(self, eta=0.1, iters=10, seed=1):
+        super().__init__()
         if eta < 0 or eta > 1.0:
             sys.exit("Eta should be between zero and one!")
         self.__eta = eta
@@ -27,30 +30,61 @@ class SGD(object):
 
     # Learn the model
     def learn(self, x, y):
-        generator = np.random.RandomState(self.__seed)
-        self.__w = generator.normal(size=x.shape[1]+1)
+        try:
+            generator = np.random.RandomState(self.__seed)
+            self.__w = generator.normal(size=x.shape[1]+1)
 
-        for i in range(self.__iters):
-            r = generator.permutation(len(y))
-            x, y = x[r], y[r]
-            iter_cost = 0
+            for i in range(self.__iters):
+                r = generator.permutation(len(y))
+                x, y = x[r], y[r]
+                iter_cost = 0
 
-            for xi, yi in zip(x, y):
-                net_input = np.dot(xi, self.__w[1:]) + self.__w[0]
-                error = yi - net_input
-                self.__w[0] += self.__eta * error
-                self.__w[1:] += self.__eta * xi.dot(error)
+                for xi, yi in zip(x, y):
+                    error = yi - self.__net_input(xi)
 
-                iter_cost += 0.5 * error ** 2
-                print("i= " + str(i) + " iter_cost= " + str(iter_cost) + " self_w0= " + str(self.__w[0]))
-            self.__costs[i] = iter_cost / len(y)
+                    self.__w[0] += self.__eta * error
+                    self.__w[1:] += self.__eta * xi.dot(error)
+
+                    iter_cost += 0.5 * error ** 2
+
+                self.__costs[i] = iter_cost / len(y)
+
+        except FloatingPointError:
+            sys.exit("Not converging! Choose a smaller Eta.")
+
+    # Computing the net input value
+    def __net_input(self, x):
+        return np.dot(x, self.__w[1:]) + self.__w[0]
+
+    # Predict the class label of a given sample
+    def predict(self, x):
+        input_ = self.__net_input(x)
+        return np.where(input_ >= 0, 1, -1)
 
     # Print costs figure
-    def print_costs(self):
-        plt.plot(range(1, len(self.__costs) + 1), self.__costs)
+    def print_errors(self, label="", no_info=False):
+        plt.plot(range(1, len(self.__costs) + 1), self.__costs, label=label)
         plt.xlabel("iteration")
         plt.ylabel("cost")
-        plt.title("SGD Binary Classifier\nCosts Figure (eta = " + str(self.__eta) + " , iterations = " +
-                  str(self.__iters) + " )")
+
+        if no_info:
+            plt.title("SGD Binary Classifier\nCosts Figure")
+        else:
+            plt.title("SGD Binary Classifier\nCosts Figure (eta = " + str(self.__eta) + " , iterations = " +
+                      str(self.__iters) + " )")
+
         plt.grid(True)
-        plt.show()
+
+    # Print multiple plots for multi-class classifier
+    def multi_print_errors(self, label, no_info=False):
+        plt.plot(range(1, len(self.__costs) + 1), self.__costs, label=label)
+        plt.xlabel("iteration")
+        plt.ylabel("cost")
+
+        if no_info:
+            plt.title("Multi-class SGD Classifier\nCosts Figure")
+        else:
+            plt.title("Multi-class SGD Classifier\nCosts Figure (eta = " + str(self.__eta) + " , iterations = " +
+                      str(self.__iters) + " )")
+
+        plt.grid(True)
